@@ -185,6 +185,142 @@ const KNOWN_COMMANDS: Record<string, CommandMetadata> = {
     group: "insert",
   },
 
+  // --- Alignment and writing direction ---
+  setTextAlign: {
+    type: "action",
+    args: [{ name: "alignment", required: true }],
+    group: "formatting",
+  },
+  unsetTextAlign: {
+    type: "action",
+    args: [],
+    group: "formatting",
+  },
+  /**
+   * Block direction commands come from the BlockDirection extension, not
+   * core's inert TextDirection — see src/extensions/block-direction.ts. Core's
+   * setTextDirection/unsetTextDirection are still discovered, but with no
+   * attributes declared they are no-ops, so they are left unlisted here
+   * rather than advertised to ports as working controls.
+   */
+  setBlockDirection: {
+    type: "action",
+    args: [{ name: "direction", required: true }],
+    group: "formatting",
+  },
+  unsetBlockDirection: {
+    type: "action",
+    args: [],
+    group: "formatting",
+  },
+  setBlockDirectionLocked: {
+    type: "action",
+    args: [{ name: "locked", required: true }],
+    group: "formatting",
+  },
+
+  // --- Table commands ---
+  insertTable: {
+    type: "action",
+    associatedType: "table",
+    args: [
+      { name: "rows", required: false },
+      { name: "cols", required: false },
+      { name: "withHeaderRow", required: false },
+    ],
+    group: "table",
+  },
+  deleteTable: {
+    type: "action",
+    associatedType: "table",
+    args: [],
+    group: "table",
+  },
+  addRowBefore: {
+    type: "action",
+    associatedType: "tableRow",
+    args: [],
+    group: "table",
+  },
+  addRowAfter: {
+    type: "action",
+    associatedType: "tableRow",
+    args: [],
+    group: "table",
+  },
+  deleteRow: {
+    type: "action",
+    associatedType: "tableRow",
+    args: [],
+    group: "table",
+  },
+  addColumnBefore: {
+    type: "action",
+    associatedType: "tableCell",
+    args: [],
+    group: "table",
+  },
+  addColumnAfter: {
+    type: "action",
+    associatedType: "tableCell",
+    args: [],
+    group: "table",
+  },
+  deleteColumn: {
+    type: "action",
+    associatedType: "tableCell",
+    args: [],
+    group: "table",
+  },
+  mergeCells: {
+    type: "action",
+    associatedType: "tableCell",
+    args: [],
+    group: "table",
+  },
+  splitCell: {
+    type: "action",
+    associatedType: "tableCell",
+    args: [],
+    group: "table",
+  },
+  mergeOrSplit: {
+    type: "action",
+    associatedType: "tableCell",
+    args: [],
+    group: "table",
+  },
+  toggleHeaderRow: {
+    type: "action",
+    associatedType: "tableHeader",
+    args: [],
+    group: "table",
+  },
+  toggleHeaderColumn: {
+    type: "action",
+    associatedType: "tableHeader",
+    args: [],
+    group: "table",
+  },
+  toggleHeaderCell: {
+    type: "action",
+    associatedType: "tableHeader",
+    args: [],
+    group: "table",
+  },
+  goToNextCell: {
+    type: "action",
+    associatedType: "tableCell",
+    args: [],
+    group: "table",
+  },
+  goToPreviousCell: {
+    type: "action",
+    associatedType: "tableCell",
+    args: [],
+    group: "table",
+  },
+
   // --- History ---
   undo: {
     type: "action",
