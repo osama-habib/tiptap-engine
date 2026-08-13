@@ -58,10 +58,17 @@ const BLOCK_TYPES = [
 /**
  * Node types that carry a stable `id` attribute.
  *
- * Ids are what let a host address a specific block — to scope an edit to a
- * selection, or to reconcile a change against one clause rather than
- * rewriting the document. Only structural block nodes get one; text nodes and
- * marks are addressed by position, not identity.
+ * Ids are the addressing scheme a host uses to name one block — to scope an
+ * edit to a selection, or to point an instruction at a single clause instead of
+ * a whole document.
+ *
+ * **Top-level blocks only.** Nested nodes — list items, table rows, table cells
+ * — are deliberately excluded, because the documents this engine loads carry no
+ * ids on them. UniqueID *mints* an id wherever the attribute is declared and
+ * missing, so declaring it on nested nodes would rewrite every one of them on
+ * load and invent ids that no producer of these documents recognises. The
+ * result looks harmless and quietly makes the saved document differ from the
+ * one that was loaded.
  */
 const IDENTIFIED_TYPES = [
   "paragraph",
@@ -70,13 +77,9 @@ const IDENTIFIED_TYPES = [
   "codeBlock",
   "bulletList",
   "orderedList",
-  "listItem",
   "horizontalRule",
   "image",
   "table",
-  "tableRow",
-  "tableCell",
-  "tableHeader",
 ] as const;
 
 /**
@@ -131,6 +134,14 @@ export function buildExtensions(): AnyExtension[] {
      */
     UniqueID.configure({
       types: [...IDENTIFIED_TYPES],
+
+      /**
+       * Already the package default, stated explicitly because the whole
+       * addressing scheme is this one attribute name: if it ever changed, ids
+       * would land under a key nothing reads, and the failure would be silent
+       * — rendering stays correct and only block-scoped edits stop working.
+       */
+      attributeName: "id",
     }),
 
     /**

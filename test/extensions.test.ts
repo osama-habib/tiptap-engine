@@ -9,13 +9,29 @@
 // works" but "loading and re-reading a document does not lose it".
 // ============================================================================
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { Editor } from "@tiptap/core";
 import { buildExtensions } from "../src/extensions/registry";
 
+const openEditors: Editor[] = [];
+
 function editor() {
-  return new Editor({ extensions: buildExtensions() });
+  const instance = new Editor({ extensions: buildExtensions() });
+  openEditors.push(instance);
+  return instance;
 }
+
+/**
+ * Destroy every editor a test created.
+ *
+ * Not hygiene — required. ProseMirror's DOMObserver schedules a flush on a
+ * timer, and an editor left alive fires it after vitest has torn down jsdom,
+ * where `document` no longer exists. Vitest reports that as an unhandled error
+ * and warns it can produce false positives.
+ */
+afterEach(() => {
+  while (openEditors.length) openEditors.pop()?.destroy();
+});
 
 /**
  * A fragment in the shape real documents arrive in: right-to-left headings
@@ -128,5 +144,69 @@ describe("round-trip fidelity", () => {
     const idOf = (doc: typeof second) =>
       (doc.content?.[0] as { attrs?: { id?: string } } | undefined)?.attrs?.id;
     expect(idOf(second)).toBe(idOf(JSON.parse(first)));
+  });
+});
+
+describe("id placement", () => {
+  /**
+   * Walk every node in a document, reporting each type and whether it carries
+   * an id. Nested nodes are what this group is about, so the walk cannot stop
+   * at the top level.
+   */
+  function idsByType(node: Record<string, unknown>): Array<[string, boolean]> {
+    const found: Array<[string, boolean]> = [];
+
+    const visit = (n: Record<string, unknown>) => {
+      const type = n.type;
+      if (typeof type === "string" && type !== "doc" && type !== "text") {
+        const attrs = n.attrs as Record<string, unknown> | undefined;
+        found.push([type, typeof attrs?.id === "string"]);
+      }
+      for (const child of (n.content as Array<Record<string, unknown>>) ?? []) {
+        visit(child);
+      }
+    };
+
+    visit(node);
+    return found;
+  }
+
+  it("puts ids on top-level blocks and never on nested nodes", () => {
+    const e = editor();
+    e.commands.setContent(DOCUMENT_HTML);
+    const types = idsByType(e.getJSON() as Record<string, unknown>);
+
+    const withId = (type: string) =>
+      types.filter(([t]) => t === type).map(([, hasId]) => hasId);
+
+    // The addressing scheme: a host names a block by its id, so top-level
+    // blocks must have one.
+    expect(withId("heading")).not.toContain(false);
+    expect(withId("paragraph")).not.toContain(false);
+    expect(withId("table")).not.toContain(false);
+
+    /**
+     * And nested nodes must NOT. UniqueID mints an id wherever the attribute is
+     * declared and absent, so declaring it here would rewrite every list item,
+     * row and cell on load and invent ids no document producer knows. Nothing
+     * would appear broken — the saved document would just silently differ from
+     * the loaded one.
+     */
+    expect(withId("listItem")).not.toContain(true);
+    expect(withId("tableRow")).not.toContain(true);
+    expect(withId("tableCell")).not.toContain(true);
+    expect(withId("tableHeader")).not.toContain(true);
+  });
+
+  it("leaves a loaded document's nested nodes untouched", () => {
+    const e = editor();
+    e.commands.setContent(DOCUMENT_HTML);
+    const loaded = JSON.stringify(e.getJSON());
+
+    e.commands.setContent(JSON.parse(loaded));
+
+    // Loading and re-reading must be a fixed point for the parts of the tree
+    // the engine does not own, or every open would look like an edit.
+    expect(JSON.stringify(e.getJSON())).toBe(loaded);
   });
 });
